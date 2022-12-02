@@ -1,7 +1,7 @@
 from flask import Flask,render_template,url_for,redirect
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
-from flask_login import UserMixin,login_user,LoginManager,login_required,logout_user,LoginForm
+from flask_login import UserMixin,login_user,LoginManager,login_required,logout_user
 from flask_wtf import FlaskForm
 from wtforms import StringField,PasswordField,SubmitField
 from flask_bcrypt import Bcrypt
@@ -16,7 +16,7 @@ bcrypt=Bcrypt(app)
 
 app.config['SECRET_KEY'] = 'secretkey'
 
-login_manager =LoginManager()
+login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
@@ -41,7 +41,7 @@ class RegisterForm(FlaskForm):
             raise ValidationError('the username already exists please choose a different name')
         
         
-class LogForm(FlaskForm):
+class LoginForm(FlaskForm):
     username = StringField(validators=[InputRequired(),Length(min=4,max=20)],render_kw={"placeholder":"username"})
     password = PasswordField (validators=[InputRequired(),Length(min=4,max=20)],render_kw={"placeholder":"username"})
     submit = SubmitField('login')
@@ -54,17 +54,18 @@ def home():
 
 @app.route('/login',methods=['GET','POST'])
 def login():
-    form = LogForm()
+    form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
         if user:
-            if bcrypt.check_password_hash(user.Password,form.password.data):
+            if bcrypt.check_password_hash(user.password,form.password.data):
                 login_user(user)
                 return redirect(url_for('dashboard'))
-        return render_template('login.html',form=form)
+    return render_template('login.html',form=form)
         
 
 @app.route('/dashboard',methods=['GET','POST'])
+@login_required
 def dashboard():
     return render_template('dashboard.html')
 
@@ -77,21 +78,12 @@ def logout():
 def register():
     form = RegisterForm()
     if form.validate_on_submit():
-        hashed_password = Bcrypt.generate_password_hash(form.password.data)
+        hashed_password = bcrypt.generate_password_hash(form.password.data)
         new_user = User(username=form.username.data, password = hashed_password)
         db.session.add(new_user)
         db.session.commit()
         return redirect(url_for('login'))
     return render_template('register.html',form=form)
-
-        
-    
-
-
-
-
-        
-   
 class Todo(db.Model):
     id=db.Column(db.Integer,primary_key=True)
     content=db.Column(db.String(200),nullable=False)
